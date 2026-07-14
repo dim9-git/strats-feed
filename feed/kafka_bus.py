@@ -72,15 +72,57 @@ class BarsFetchedEvent:
 
 
 class KafkaBus:
-    def __init__(self, bootstrap_servers: str) -> None:
+    def __init__(
+        self,
+        bootstrap_servers: str,
+        *,
+        security_protocol: str = "PLAINTEXT",
+        sasl_mechanism: str = "PLAIN",
+        sasl_username: str = "",
+        sasl_password: str = "",
+        ssl_check_hostname: bool = True,
+        ssl_verify: bool = True,
+    ) -> None:
         if not bootstrap_servers.strip():
             raise ValueError("KAFKA_BOOTSTRAP_SERVERS is required")
-        self.bootstrap_servers = bootstrap_servers
+        self.bootstrap_servers = bootstrap_servers.strip()
+        self.security_protocol = security_protocol.strip().upper() or "PLAINTEXT"
+        self.sasl_mechanism = (sasl_mechanism or "PLAIN").strip().upper()
+        self.sasl_username = sasl_username
+        self.sasl_password = sasl_password
+        self.ssl_check_hostname = ssl_check_hostname
+        self.ssl_verify = ssl_verify
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        servers = [s.strip() for s in self.bootstrap_servers.split(",") if s.strip()]
+        kwargs: dict[str, Any] = {
+            "bootstrap_servers": servers,
+            "security_protocol": self.security_protocol,
+        }
+        if self.security_protocol.startswith("SASL"):
+            if not self.sasl_username or not self.sasl_password:
+                raise ValueError(
+                    "KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD are required "
+                    f"when security_protocol={self.security_protocol}"
+                )
+            kwargs["sasl_mechanism"] = self.sasl_mechanism
+            kwargs["sasl_plain_username"] = self.sasl_username
+            kwargs["sasl_plain_password"] = self.sasl_password
+        if self.security_protocol in {"SSL", "SASL_SSL"}:
+            kwargs["ssl_check_hostname"] = self.ssl_check_hostname
+            if not self.ssl_verify:
+                import ssl
+
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                kwargs["ssl_context"] = ctx
+        return kwargs
 
     def producer(self) -> KafkaProducer:
         try:
             return KafkaProducer(
-                bootstrap_servers=self.bootstrap_servers.split(","),
+                **self._client_kwargs(),
                 acks="all",
                 retries=5,
                 linger_ms=20,
@@ -103,7 +145,7 @@ class KafkaBus:
         try:
             return KafkaConsumer(
                 *topics,
-                bootstrap_servers=self.bootstrap_servers.split(","),
+                **self._client_kwargs(),
                 group_id=group_id,
                 auto_offset_reset=auto_offset_reset,
                 enable_auto_commit=True,

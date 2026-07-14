@@ -17,7 +17,15 @@ class BarFetcherService:
     def __init__(self, cfg: FeedConfig, *, feed: MarketFeed | None = None, bus: KafkaBus | None = None) -> None:
         self.cfg = cfg
         self.feed = feed or MarketFeed(cfg.cache_dir)
-        self.bus = bus or KafkaBus(cfg.kafka_bootstrap_servers)
+        self.bus = bus or KafkaBus(
+            cfg.kafka_bootstrap_servers,
+            security_protocol=cfg.kafka_security_protocol,
+            sasl_mechanism=cfg.kafka_sasl_mechanism,
+            sasl_username=cfg.kafka_sasl_username,
+            sasl_password=cfg.kafka_sasl_password,
+            ssl_check_hostname=cfg.kafka_ssl_check_hostname,
+            ssl_verify=cfg.kafka_ssl_verify,
+        )
         self._producer = self.bus.producer()
         self.topic = cfg.bars_topic
         self._last_daily_fingerprint = ""
