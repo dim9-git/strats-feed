@@ -1,4 +1,4 @@
-kafka-python>=2.0
+kafka-python>=3
 python-dotenv>=1.0
 strats-sdk @ git+https://github.com/dim9-git/strats-sdk.git
 numpy

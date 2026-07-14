@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, TypeVar
 
 from kafka import KafkaConsumer, KafkaProducer
-from kafka.errors import NoBrokersAvailable
+from kafka.errors import KafkaError
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -90,7 +90,7 @@ class KafkaBus:
                 if k is None
                 else (k if isinstance(k, bytes) else str(k).encode()),
             )
-        except NoBrokersAvailable as exc:
+        except KafkaError as exc:
             raise RuntimeError(f"No Kafka brokers at {self.bootstrap_servers!r}") from exc
 
     def consumer(
@@ -112,7 +112,7 @@ class KafkaBus:
                 consumer_timeout_ms=1000,
                 max_partition_fetch_bytes=5_000_000,
             )
-        except NoBrokersAvailable as exc:
+        except KafkaError as exc:
             raise RuntimeError(f"No Kafka brokers at {self.bootstrap_servers!r}") from exc
 
 

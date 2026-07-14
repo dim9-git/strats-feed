@@ -14,7 +14,7 @@ dependencies = [
     "requests",
     "ccxt",
     "pyarrow",
-    "kafka-python",
+    "kafka-python>=3",
     "python-dotenv",
 ]
 
