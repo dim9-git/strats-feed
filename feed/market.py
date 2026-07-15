@@ -33,16 +33,19 @@ class MarketFeed:
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=request.lookback_days)
 
-        start_s = start.isoformat()
-        end_s = end.isoformat()
+        bar_start_s = start.isoformat()
+        bar_end_s = end.isoformat()
+
+        date_start_s = start.date().isoformat()
+        date_end_s = (end.date() + timedelta(days=1)).isoformat()
 
         logger.info(
             "Fetching %s %s %s (%s → %s)",
             request.market,
             request.symbol,
             request.timeframe,
-            start_s,
-            end_s,
+            bar_start_s,
+            bar_end_s,
         )
 
         funding_df: pd.DataFrame | None = None
@@ -54,8 +57,8 @@ class MarketFeed:
                     exchange_id="binance",
                     symbol=_to_ccxt_symbol(request.symbol),
                     timeframe=request.timeframe,
-                    start=start_s,
-                    end=end_s,
+                    start=bar_start_s,
+                    end=bar_end_s,
                     cache_dir=self.cache_dir,
                 )
             )
@@ -65,21 +68,21 @@ class MarketFeed:
                 FuturesKlinesParams(
                     symbol=request.symbol,
                     interval=request.timeframe,
-                    start=start_s,
-                    end=end_s,
+                    start=bar_start_s,
+                    end=bar_end_s,
                 )
             )
             bars = ensure_utc_index(bars)
 
             if request.with_funding:
                 funding_df = fetch_funding_rates(
-                    FundingRatesParams(symbol=request.symbol, start=start_s, end=end_s)
+                    FundingRatesParams(symbol=request.symbol, start=date_start_s, end=date_end_s)
                 )
                 bars = merge_funding(bars, funding_df)
 
             if request.with_metrics:
                 metrics_df = fetch_metrics(
-                    MetricsParams(symbol=request.symbol, start=start_s, end=end_s),
+                    MetricsParams(symbol=request.symbol, start=date_start_s, end=date_end_s),
                     resample="1h",
                 )
                 bars = merge_metrics_hourly(bars, metrics_df) if metrics_df is not None else bars
