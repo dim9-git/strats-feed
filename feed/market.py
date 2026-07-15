@@ -32,8 +32,9 @@ class MarketFeed:
     def fetch(self, request: DataRequest) -> MarketSnapshot:
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=request.lookback_days)
-        start_s = start.strftime("%Y-%m-%d")
-        end_s = end.strftime("%Y-%m-%d")
+
+        start_s = start.isoformat()
+        end_s = end.isoformat()
 
         logger.info(
             "Fetching %s %s %s (%s → %s)",
