@@ -7,8 +7,8 @@ import time
 
 from feed.bars_codec import bars_to_records, resample_daily, select_publish_columns
 from feed.config import FeedConfig
-from feed.kafka_bus import BarsFetchedEvent, KafkaBus, publish
 from feed.market import MarketFeed, latest_closed_bar_time
+from strats_sdk.kafka import BarsFetchedEvent, KafkaBus, publish
 
 logger = logging.getLogger(__name__)
 

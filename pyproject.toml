@@ -8,13 +8,12 @@ version = "0.1.0"
 description = "Fetch and cache market bars; publish bars.fetched to Kafka"
 requires-python = ">=3.10"
 dependencies = [
-    "strats-sdk @ git+https://github.com/dim9-git/strats-sdk.git",
+    "strats-sdk[kafka] @ git+https://github.com/dim9-git/strats-sdk.git",
     "numpy",
     "pandas",
     "requests",
     "ccxt",
     "pyarrow",
-    "kafka-python>=3",
     "python-dotenv",
 ]
 
