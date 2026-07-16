@@ -82,6 +82,9 @@ class BarFetcherService:
         return event
 
     def run_loop(self) -> None:
+        from urllib.parse import urlparse
+
+        rabbit_host = urlparse(self.cfg.rabbitmq_url).hostname or "?"
         logger.info(
             "Feed started %s %s poll=%ss publish_1h=%d publish_1d=%d rabbitmq=%s",
             self.cfg.symbol,
@@ -89,7 +92,7 @@ class BarFetcherService:
             self.cfg.poll_seconds,
             self.cfg.publish_bar_count,
             self.cfg.publish_daily_bar_count,
-            self.cfg.rabbitmq_url,
+            rabbit_host,
         )
         try:
             while True:
