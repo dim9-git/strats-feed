@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from urllib.parse import urlparse
 
 from feed.bars_codec import bars_to_records, resample_daily, select_publish_columns
 from feed.config import FeedConfig
@@ -18,7 +19,6 @@ class BarFetcherService:
         self.cfg = cfg
         self.feed = feed or MarketFeed(cfg.cache_dir)
         self.bus = bus or RabbitBus(cfg.rabbitmq_url)
-        self._producer = self.bus.producer()
         self.topic = cfg.bars_topic
         self._last_daily_fingerprint = ""
 
@@ -68,8 +68,13 @@ class BarFetcherService:
             bar_count=len(bars_1h),
             daily_bar_count=len(bars_1d),
         )
-        publish(self._producer, self.topic, event.to_json(), key=f"{event.symbol}:{event.timeframe}")
-        self._producer.flush(timeout=10)
+        # Connect only after the long fetch — never hold an idle AMQP socket.
+        producer = self.bus.producer()
+        try:
+            publish(producer, self.topic, event.to_json(), key=f"{event.symbol}:{event.timeframe}")
+            producer.flush(timeout=10)
+        finally:
+            producer.close()
         logger.info(
             "Published bars.fetched %s 1h=%s (n=%d) daily=%s new_daily=%s (n=%d)",
             event.symbol,
@@ -82,8 +87,6 @@ class BarFetcherService:
         return event
 
     def run_loop(self) -> None:
-        from urllib.parse import urlparse
-
         rabbit_host = urlparse(self.cfg.rabbitmq_url).hostname or "?"
         logger.info(
             "Feed started %s %s poll=%ss publish_1h=%d publish_1d=%d rabbitmq=%s",
@@ -94,19 +97,17 @@ class BarFetcherService:
             self.cfg.publish_daily_bar_count,
             rabbit_host,
         )
-        try:
-            while True:
-                try:
-                    self.tick()
-                except Exception:
-                    logger.exception("Feed tick failed")
-                if self.cfg.run_once:
-                    break
-                time.sleep(self.cfg.poll_seconds)
-        finally:
-            self._producer.close()
+        while True:
+            try:
+                self.tick()
+            except Exception:
+                logger.exception("Feed tick failed")
+            if self.cfg.run_once:
+                break
+            time.sleep(self.cfg.poll_seconds)
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("pika").setLevel(logging.WARNING)
     BarFetcherService(FeedConfig.from_env()).run_loop()
