@@ -1,4 +1,4 @@
-strats-sdk[kafka] @ git+https://github.com/dim9-git/strats-sdk.git
+strats-sdk[rabbitmq] @ git+https://github.com/dim9-git/strats-sdk.git
 python-dotenv>=1.0
 numpy
 pandas

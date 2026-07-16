@@ -1,4 +1,4 @@
-"""Fetch BTC 1h bars, publish hourly + daily series inside Kafka event."""
+"""Fetch BTC 1h bars, publish hourly + daily series inside RabbitMQ event."""
 
 from __future__ import annotations
 
@@ -8,24 +8,16 @@ import time
 from feed.bars_codec import bars_to_records, resample_daily, select_publish_columns
 from feed.config import FeedConfig
 from feed.market import MarketFeed, latest_closed_bar_time
-from strats_sdk.kafka import BarsFetchedEvent, KafkaBus, publish
+from strats_sdk.rabbit import BarsFetchedEvent, RabbitBus, publish
 
 logger = logging.getLogger(__name__)
 
 
 class BarFetcherService:
-    def __init__(self, cfg: FeedConfig, *, feed: MarketFeed | None = None, bus: KafkaBus | None = None) -> None:
+    def __init__(self, cfg: FeedConfig, *, feed: MarketFeed | None = None, bus: RabbitBus | None = None) -> None:
         self.cfg = cfg
         self.feed = feed or MarketFeed(cfg.cache_dir)
-        self.bus = bus or KafkaBus(
-            cfg.kafka_bootstrap_servers,
-            security_protocol=cfg.kafka_security_protocol,
-            sasl_mechanism=cfg.kafka_sasl_mechanism,
-            sasl_username=cfg.kafka_sasl_username,
-            sasl_password=cfg.kafka_sasl_password,
-            ssl_check_hostname=cfg.kafka_ssl_check_hostname,
-            ssl_verify=cfg.kafka_ssl_verify,
-        )
+        self.bus = bus or RabbitBus(cfg.rabbitmq_url)
         self._producer = self.bus.producer()
         self.topic = cfg.bars_topic
         self._last_daily_fingerprint = ""
@@ -91,13 +83,13 @@ class BarFetcherService:
 
     def run_loop(self) -> None:
         logger.info(
-            "Feed started %s %s poll=%ss publish_1h=%d publish_1d=%d kafka=%s",
+            "Feed started %s %s poll=%ss publish_1h=%d publish_1d=%d rabbitmq=%s",
             self.cfg.symbol,
             self.cfg.timeframe,
             self.cfg.poll_seconds,
             self.cfg.publish_bar_count,
             self.cfg.publish_daily_bar_count,
-            self.cfg.kafka_bootstrap_servers,
+            self.cfg.rabbitmq_url,
         )
         try:
             while True:

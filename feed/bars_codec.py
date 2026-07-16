@@ -1,4 +1,4 @@
-"""Serialize / deserialize OHLCV bars for Kafka payloads."""
+"""Serialize / deserialize OHLCV bars for messaging payloads."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-# Keep Kafka payloads lean: OHLCV + a few enrichments only.
+# Keep payloads lean: OHLCV + a few enrichments only.
 DEFAULT_PUBLISH_COLUMNS = (
     "Open",
     "High",
